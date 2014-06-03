@@ -12,3 +12,8 @@ const (
 
 	DefaultPort = "1900"
 )
+
+const (
+	notifyMethod  = "NOTIFY"
+	msearchMethod = "M-SEARCH"
+)

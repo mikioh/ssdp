@@ -6,11 +6,18 @@ package ssdp
 
 import (
 	"net"
-	"net/http"
 	"testing"
 )
 
-func TestDevice(t *testing.T) {
+type proxy struct {
+	*Redirector
+}
+
+func (p *proxy) RedirectAdvert(rdr *AdvertRedirector) {}
+
+func (p *proxy) RedirectResponse(rdr *ResponseRedirector) {}
+
+func TestRedirector(t *testing.T) {
 	ifi := loopbackInterface()
 	if ifi == nil {
 		t.Skip("no available multicast network interface found")
@@ -26,22 +33,16 @@ func TestDevice(t *testing.T) {
 
 	for _, grp := range grps {
 		ln := Listener{Group: grp}
-		dev, err := ln.ListenDevice(mifs)
+		rdr, err := ln.ListenRedirector(mifs)
 		if err != nil {
 			t.Fatal(err)
 		}
-		hdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			h := w.Header()
-			h.Set("Cache-Control", "max-age=1")
-			h.Set("Location", "here")
-			h.Set("Server", "it's me")
-			w.Write(nil)
-		})
-		go dev.Serve(hdlr)
+		p := proxy{rdr}
+		go rdr.Serve(&p)
 
-		for _, ifi := range dev.Interfaces() {
-			t.Logf("%v on %v", dev.GroupAddr(), ifi)
+		for _, ifi := range p.Redirector.Interfaces() {
+			t.Logf("%v on %v", p.Redirector.GroupAddr(), ifi)
 		}
-		dev.Close()
+		p.Redirector.Close()
 	}
 }

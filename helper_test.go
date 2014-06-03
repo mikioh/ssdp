@@ -2,11 +2,27 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package ssdp_test
+package ssdp
 
 import "net"
 
-func multicastLoopbackInterface() *net.Interface {
+var (
+	supportsIPv4 bool
+	supportsIPv6 bool
+)
+
+func init() {
+	if c, err := net.ListenPacket("udp4", "127.0.0.1:0"); err == nil {
+		c.Close()
+		supportsIPv4 = true
+	}
+	if c, err := net.ListenPacket("udp6", "[::1]:0"); err == nil {
+		c.Close()
+		supportsIPv6 = true
+	}
+}
+
+func loopbackInterface() *net.Interface {
 	ift, err := net.Interfaces()
 	if err != nil {
 		return nil

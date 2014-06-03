@@ -2,35 +2,42 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package ssdp_test
+package ssdp
 
 import (
 	"net"
 	"net/http"
 	"testing"
-
-	"github.com/mikioh/ssdp"
 )
 
 func TestControlPoint(t *testing.T) {
-	ifi := multicastLoopbackInterface()
+	ifi := loopbackInterface()
 	if ifi == nil {
-		t.Skip("no available multicast interface found")
+		t.Skip("no available multicast network interface found")
 	}
 	mifs := []net.Interface{*ifi}
-
-	cpln := ssdp.Listener{}
-	cp, err := cpln.ListenControlPoint(mifs)
-	if err != nil {
-		t.Fatal(err)
+	var grps []string
+	if supportsIPv4 {
+		grps = append(grps, DefaultIPv4Group)
 	}
-	cphdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write(nil)
-	})
-	go cp.Serve(cphdlr)
-
-	for _, ifi := range cp.Interfaces() {
-		t.Logf("%v", ifi)
+	if supportsIPv6 {
+		grps = append(grps, DefaultIPv6LinkLocalGroup)
 	}
-	cp.Close()
+
+	for _, grp := range grps {
+		ln := Listener{Group: grp}
+		cp, err := ln.ListenControlPoint(mifs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Write(nil)
+		})
+		go cp.Serve(hdlr)
+
+		for _, ifi := range cp.Interfaces() {
+			t.Logf("%v on %v", cp.GroupAddr(), ifi)
+		}
+		cp.Close()
+	}
 }

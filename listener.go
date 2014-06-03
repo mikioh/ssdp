@@ -5,7 +5,6 @@
 package ssdp
 
 import (
-	"errors"
 	"net"
 
 	"code.google.com/p/go.net/ipv4"
@@ -20,25 +19,21 @@ type Listener struct {
 	Group string
 
 	// Port specifies a service port of the unicast and multicast
-	// UDP HTTP message exchange. If it is empty, DefaultPort will
-	// be used.
+	// UDP HTTP message exchanges. If it is empty, DefaultPort
+	// will be used.
 	Port string
 
 	// Port specifies a local listening port of the unicast and
-	// multicast UDP HTTP message exchange. If it is not empty,
-	// the listener listens on LocalPort. Otherwise listens on
-	// Port.
+	// multicast UDP HTTP message exchanges. If it is not empty,
+	// the listener prefers LocalPort than Port.
 	LocalPort string
 
 	// Loopback sets whether transmitted multicast packets should
 	// be copied and send back to the originator.
 	MulticastLoopback bool
-
-	group               *net.UDPAddr
-	multicastInterfaces []net.Interface
 }
 
-func (ln *Listener) listen() (tr transport, unicast func(net.IP) bool, err error) {
+func (ln *Listener) listen() (conn, *net.UDPAddr, error) {
 	if ln.Group == "" {
 		ln.Group = DefaultIPv4Group
 	}
@@ -48,93 +43,30 @@ func (ln *Listener) listen() (tr transport, unicast func(net.IP) bool, err error
 	if ln.LocalPort == "" {
 		ln.LocalPort = DefaultPort
 	}
-	ln.group, err = net.ResolveUDPAddr("udp", net.JoinHostPort(ln.Group, ln.Port))
+	grp, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ln.Group, ln.Port))
 	if err != nil {
 		return nil, nil, err
 	}
-	if ln.group.IP.To4() != nil {
+	if grp.IP.To4() != nil {
 		c, err := net.ListenPacket("udp4", net.JoinHostPort(ln.Group, ln.LocalPort))
 		if err != nil {
 			return nil, nil, err
 		}
-		tr = ipv4.NewPacketConn(c)
-		unicast = ipv4Unicast
-	} else {
-		c, err := net.ListenPacket("udp6", net.JoinHostPort(ln.Group, ln.LocalPort))
-		if err != nil {
-			return nil, nil, err
-		}
-		tr = ipv6.NewPacketConn(c)
-		unicast = ipv6Unicast
+		p := newUDP4Conn(ipv4.NewPacketConn(c))
+		p.SetMulticastTTL(2)
+		p.SetMulticastLoopback(ln.MulticastLoopback)
+		return p, grp, nil
 	}
-	tr.SetMulticastLoopback(ln.MulticastLoopback)
-	return tr, unicast, nil
-}
-
-func (ln *Listener) joinGroup(tr transport, mifs []net.Interface, unicast func(net.IP) bool) (err error) {
-	mifs, err = multicastInterfaces(mifs, unicast)
+	c, err := net.ListenPacket("udp6", net.JoinHostPort(ln.Group, ln.LocalPort))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	for _, ifi := range mifs {
-		switch c := tr.(type) {
-		case *ipv4.PacketConn:
-			err = c.JoinGroup(&ifi, ln.group)
-		case *ipv6.PacketConn:
-			err = c.JoinGroup(&ifi, ln.group)
-		default:
-			return errors.New("invalid packet conn")
-		}
-		if err != nil {
-			continue
-		}
-		ln.multicastInterfaces = append(ln.multicastInterfaces, ifi)
+	p := newUDP6Conn(ipv6.NewPacketConn(c))
+	if grp.IP.IsLinkLocalMulticast() || grp.IP.IsLinkLocalMulticast() {
+		p.SetMulticastHopLimit(1)
+	} else {
+		p.SetMulticastHopLimit(5)
 	}
-	if len(ln.multicastInterfaces) == 0 {
-		return errors.New("no such multicast interface")
-	}
-	if err := setControlFlags(tr); err != nil {
-		return err
-	}
-	return nil
-}
-
-type path struct {
-	src *net.UDPAddr
-	dst net.IP
-	ifi *net.Interface
-}
-
-func (ln *Listener) readFrom(tr transport, b []byte) (int, *path, error) {
-	switch c := tr.(type) {
-	case *ipv4.PacketConn:
-		n, cm, src, err := c.ReadFrom(b)
-		if err != nil {
-			return 0, nil, err
-		}
-		return n, &path{src: src.(*net.UDPAddr), dst: cm.Dst, ifi: ln.interfaceByIndex(cm.IfIndex)}, err
-	case *ipv6.PacketConn:
-		n, cm, src, err := c.ReadFrom(b)
-		if err != nil {
-			return 0, nil, err
-		}
-		return n, &path{src: src.(*net.UDPAddr), dst: cm.Dst, ifi: ln.interfaceByIndex(cm.IfIndex)}, err
-	default:
-		return 0, nil, errors.New("invalid packet conn")
-	}
-}
-
-func (ln *Listener) interfaceByIndex(index int) *net.Interface {
-	for _, ifi := range ln.multicastInterfaces {
-		if index == ifi.Index {
-			return &ifi
-		}
-	}
-	return nil
-}
-
-func (ln *Listener) interfaces() []net.Interface {
-	mifs := make([]net.Interface, len(ln.multicastInterfaces))
-	copy(mifs, ln.multicastInterfaces)
-	return mifs
+	p.SetMulticastLoopback(ln.MulticastLoopback)
+	return p, grp, nil
 }

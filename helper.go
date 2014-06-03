@@ -18,15 +18,15 @@ func ipv6LinkLocal(ip net.IP) bool {
 	return ip.To16() != nil && ip.To4() == nil && (ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast())
 }
 
-func multicastInterfaces(ift []net.Interface, unicast func(net.IP) bool) ([]net.Interface, error) {
+func interfaces(ift []net.Interface, unicast func(net.IP) bool) ([]net.Interface, error) {
 	var err error
-	var mifs []net.Interface
 	if len(ift) == 0 {
 		ift, err = net.Interfaces()
 		if err != nil {
 			return nil, err
 		}
 	}
+	var mifs []net.Interface
 	for _, ifi := range ift {
 		if ifi.Flags&net.FlagUp == 0 || ifi.Flags&net.FlagMulticast == 0 {
 			continue
@@ -52,4 +52,13 @@ func multicastInterfaces(ift []net.Interface, unicast func(net.IP) bool) ([]net.
 		}
 	}
 	return mifs, nil
+}
+
+func interfaceByIndex(mifs []net.Interface, index int) *net.Interface {
+	for _, ifi := range mifs {
+		if index == ifi.Index {
+			return &ifi
+		}
+	}
+	return nil
 }
