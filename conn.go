@@ -24,7 +24,7 @@ type conn interface {
 	setControlFlags() error
 	readFrom([]byte) (int, *path, error)
 	writeTo([]byte, *net.UDPAddr) (int, error)
-	writeToMulti([]byte, []net.Interface, *net.UDPAddr) (int, error)
+	writeToMulti([]byte, *net.UDPAddr, []net.Interface) (int, error)
 }
 
 // a path represents a reverse path.
@@ -57,7 +57,7 @@ func (c *udp4Conn) writeTo(b []byte, peer *net.UDPAddr) (int, error) {
 	return c.WriteTo(b, nil, peer)
 }
 
-func (c *udp4Conn) writeToMulti(b []byte, mifs []net.Interface, grp *net.UDPAddr) (int, error) {
+func (c *udp4Conn) writeToMulti(b []byte, grp *net.UDPAddr, mifs []net.Interface) (int, error) {
 	if len(b) == 0 { // to prevent writing malformed packets on some platforms
 		return 0, nil
 	}
@@ -106,7 +106,7 @@ func (c *udp6Conn) writeTo(b []byte, peer *net.UDPAddr) (int, error) {
 	return c.WriteTo(b, nil, peer)
 }
 
-func (c *udp6Conn) writeToMulti(b []byte, mifs []net.Interface, grp *net.UDPAddr) (int, error) {
+func (c *udp6Conn) writeToMulti(b []byte, grp *net.UDPAddr, mifs []net.Interface) (int, error) {
 	if len(b) == 0 { // to prevent writing malformed packets on some platforms
 		return 0, nil
 	}
@@ -136,7 +136,7 @@ func newUDP6Conn(c *ipv6.PacketConn) *udp6Conn {
 	return &udp6Conn{PacketConn: c}
 }
 
-func joinGroup(c conn, mifs []net.Interface, unicast func(net.IP) bool, grp *net.UDPAddr) ([]net.Interface, error) {
+func joinGroup(c conn, grp *net.UDPAddr, mifs []net.Interface, unicast func(net.IP) bool) ([]net.Interface, error) {
 	mifs, err := interfaces(mifs, unicast)
 	if err != nil {
 		return nil, err

@@ -40,7 +40,7 @@ func (ln *Listener) ListenDevice(mifs []net.Interface) (*Device, error) {
 	} else {
 		dev.unicast = ipv6Unicast
 	}
-	if dev.mifs, err = joinGroup(dev.conn, mifs, dev.unicast, dev.group); err != nil {
+	if dev.mifs, err = joinGroup(dev.conn, dev.group, mifs, dev.unicast); err != nil {
 		dev.Close()
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (dev *Device) Notify(hdr http.Header, mifs []net.Interface) error {
 	if err != nil {
 		return err
 	}
-	if _, err := dev.writeToMulti(buf.Bytes(), mifs, dev.group); err != nil {
+	if _, err := dev.writeToMulti(buf.Bytes(), dev.group, mifs); err != nil {
 		return err
 	}
 	return nil

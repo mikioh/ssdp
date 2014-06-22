@@ -45,7 +45,7 @@ func (ln *Listener) ListenControlPoint(mifs []net.Interface) (*ControlPoint, err
 	} else {
 		cp.unicast = ipv6Unicast
 	}
-	if cp.mifs, err = joinGroup(cp.conn, mifs, cp.unicast, cp.group); err != nil {
+	if cp.mifs, err = joinGroup(cp.conn, cp.group, mifs, cp.unicast); err != nil {
 		cp.Close()
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (cp *ControlPoint) MSearch(hdr http.Header, mifs []net.Interface, tmo time.
 	if err != nil {
 		return nil, err
 	}
-	if _, err := cp.writeToMulti(buf.Bytes(), mifs, cp.group); err != nil {
+	if _, err := cp.writeToMulti(buf.Bytes(), cp.group, mifs); err != nil {
 		return nil, err
 	}
 	respCh := cp.register(req)

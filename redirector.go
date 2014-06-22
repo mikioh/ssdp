@@ -38,7 +38,7 @@ func (ln *Listener) ListenRedirector(mifs []net.Interface) (*Redirector, error) 
 	} else {
 		rdr.unicast = ipv6Unicast
 	}
-	if rdr.mifs, err = joinGroup(rdr.conn, mifs, rdr.unicast, rdr.group); err != nil {
+	if rdr.mifs, err = joinGroup(rdr.conn, rdr.group, mifs, rdr.unicast); err != nil {
 		rdr.Close()
 		return nil, err
 	}
