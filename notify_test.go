@@ -29,10 +29,15 @@ func TestNotify(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cp.Close()
-	var reqs []*http.Request
+	var rcvd = struct {
+		sync.RWMutex
+		reqs []*http.Request
+	}{}
 	cphdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		//t.Logf("CP: %+v, %+v", w, req)
-		reqs = append(reqs, req)
+		rcvd.Lock()
+		rcvd.reqs = append(rcvd.reqs, req)
+		rcvd.Unlock()
 	})
 	go cp.Serve(cphdlr)
 
@@ -52,5 +57,7 @@ func TestNotify(t *testing.T) {
 	}
 	wg.Wait()
 	time.Sleep(2 * time.Second)
-	t.Logf("%v requests received", len(reqs))
+	rcvd.RLock()
+	t.Logf("%v requests received", len(rcvd.reqs))
+	rcvd.RUnlock()
 }
