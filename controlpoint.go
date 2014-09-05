@@ -181,7 +181,7 @@ func (cp *ControlPoint) deregister(req *http.Request) {
 	cp.muxmu.Unlock()
 }
 
-func (cp ControlPoint) logf(format string, args ...interface{}) {
+func (cp *ControlPoint) logf(format string, args ...interface{}) {
 	if cp.ErrorLog != nil {
 		cp.ErrorLog.Printf(format, args...)
 	} else {
