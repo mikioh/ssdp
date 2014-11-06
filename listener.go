@@ -62,7 +62,7 @@ func (ln *Listener) listen() (conn, *net.UDPAddr, error) {
 		return nil, nil, err
 	}
 	p := newUDP6Conn(ipv6.NewPacketConn(c))
-	if grp.IP.IsLinkLocalMulticast() || grp.IP.IsLinkLocalMulticast() {
+	if grp.IP.IsInterfaceLocalMulticast() || grp.IP.IsLinkLocalMulticast() {
 		p.SetMulticastHopLimit(1)
 	} else {
 		p.SetMulticastHopLimit(5)
