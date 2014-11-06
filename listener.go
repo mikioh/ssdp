@@ -7,8 +7,8 @@ package ssdp
 import (
 	"net"
 
-	"code.google.com/p/go.net/ipv4"
-	"code.google.com/p/go.net/ipv6"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 // A Listener represents a UDP multicast listener.
