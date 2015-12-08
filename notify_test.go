@@ -15,7 +15,7 @@ func TestNotify(t *testing.T) {
 	devln := Listener{LocalPort: "1901", MulticastLoopback: true}
 	dev, err := devln.ListenDevice(nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Skipf("no available multicast network interface found: %v", err)
 	}
 	defer dev.Close()
 	devhdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
