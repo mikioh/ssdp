@@ -15,7 +15,7 @@ func TestMSearch(t *testing.T) {
 	devln := Listener{}
 	dev, err := devln.ListenDevice(nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Skip(err)
 	}
 	defer dev.Close()
 	devhdlr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
